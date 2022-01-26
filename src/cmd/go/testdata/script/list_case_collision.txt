@@ -1,0 +1,37 @@
+# Tests golang.org/issue/4773
+
+go list -json example/a
+stdout 'case-insensitive import collision'
+
+! go build example/a
+stderr 'case-insensitive import collision'
+
+# List files explicitly on command line, to encounter case-checking
+# logic even on case-insensitive filesystems.
+cp example/b/file.go example/b/FILE.go  # no-op on case-insensitive filesystems
+! go list example/b/file.go example/b/FILE.go
+stderr 'case-insensitive file name collision'
+
+mkdir example/a/Pkg  # no-op on case-insensitive filesystems
+cp example/a/pkg/pkg.go example/a/Pkg/pkg.go  # no-op on case-insensitive filesystems
+! go list example/a/pkg example/a/Pkg
+
+# Test that the path reported with an indirect import is correct.
+cp example/b/file.go example/b/FILE.go
+[case-sensitive] ! go build example/c
+[case-sensitive] stderr '^package example/c\n\timports example/b: case-insensitive file name collision: "FILE.go" and "file.go"$'
+
+-- example/a/a.go --
+package p
+import (
+	_ "example/a/pkg"
+	_ "example/a/Pkg"
+)
+-- example/a/pkg/pkg.go --
+package pkg
+-- example/b/file.go --
+package b
+-- example/c/c.go --
+package c
+
+import _ "example/b"
