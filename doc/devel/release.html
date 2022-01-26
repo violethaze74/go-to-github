@@ -1,0 +1,174 @@
+<!-- Release History -->
+
+<p>This page summarizes the changes between official stable releases of Go.
+Between releases we issue less stable
+<a href="http://blog.golang.org/2011/03/go-becomes-more-stable.html">weekly snapshots</a>.
+The <a href="weekly.html">weekly snapshot history</a> contains more detail,
+and the <a href="http://code.google.com/p/go/source/list">Mercurial change log</a>
+has full details.</p>
+
+<p>To update to a specific release, use:</p>
+
+<pre>
+hg pull
+hg update release.r<i>NN</i>
+</pre>
+
+<h2 id="r57">r57 (released 2011/05/03)</h2>
+
+<p>
+The r57 release corresponds to 
+<code><a href="weekly.html#2011-04-27">weekly.2011-04-27</a></code>
+with additional bug fixes.
+This section highlights the most significant changes in this release.
+For a more detailed summary, see the
+<a href="weekly.html#2011-04-27">weekly release notes</a>.
+For complete information, see the
+<a href="http://code.google.com/p/go/source/list?r=release-branch.r57">Mercurial change list</a>.
+</p>
+
+<p>The new <a href="/cmd/gofix">gofix</a> tool finds Go programs that use old APIs and rewrites them to use
+newer ones.  After you update to a new Go release, gofix helps make the
+necessary changes to your programs. Gofix will handle the http, os, and syscall
+package changes described below, and we will update the program to keep up with
+future changes to the libraries. 
+Gofix can’t
+handle all situations perfectly, so read and test the changes it makes before
+committing them.
+See <a href="http://blog.golang.org/2011/04/introducing-gofix.html">the gofix blog post</a> for more
+information.</p>
+
+<h3 id="r57.lang">Language</h3>
+
+<p>
+<a href="/doc/go_spec.html#Receive_operator">Multiple assignment syntax</a> replaces the <code>closed</code> function.
+The syntax for channel
+receives allows an optional second assigned value, a boolean value
+indicating whether the channel is closed. This code:
+</p>
+
+<pre>
+	v := &lt;-ch
+	if closed(ch) {
+		// channel is closed
+	}
+</pre>
+
+<p>should now be written as:</p>
+
+<pre>
+	v, ok := &lt;-ch
+	if !ok {
+		// channel is closed
+	}
+</pre>
+
+<p><a href="/doc/go_spec.html#Label_scopes">Unused labels are now illegal</a>, just as unused local variables are.</p>
+
+<h3 id="r57.pkg">Packages</h3>
+
+<p>
+<a href="/pkg/gob/">Package gob</a> will now encode and decode values of types that implement the
+<a href="/pkg/gob/#GobEncoder">GobEncoder</a> and
+<a href="/pkg/gob/#GobDecoder">GobDecoder</a> interfaces. This allows types with unexported
+fields to transmit self-consistent descriptions; examples include 
+<a href="/pkg/big/#Int.GobDecode">big.Int</a> and <a href="/pkg/big/#Rat.GobDecode">big.Rat</a>.
+</p>
+
+<p>
+<a href="/pkg/http/">Package http</a> has been redesigned.
+For clients, there are new
+<a href="/pkg/http/#Client">Client</a> and <a href="/pkg/http/#Transport">Transport</a>
+abstractions that give more control over HTTP details such as headers sent
+and redirections followed.  These abstractions make it easy to implement
+custom clients that add functionality such as <a href="http://code.google.com/p/goauth2/source/browse/oauth/oauth.go">OAuth2</a>.
+For servers, <a href="/pkg/http/#ResponseWriter">ResponseWriter</a>
+has dropped its non-essential methods.
+The Hijack and Flush methods are no longer required;
+code can test for them by checking whether a specific value implements
+<a href="/pkg/http/#Hijacker">Hijacker</a> or <a href="/pkg/http/#Flusher">Flusher</a>.
+The RemoteAddr and UsingTLS methods are replaced by <a href="/pkg/http/#Request">Request</a>'s
+RemoteAddr and TLS fields.
+The SetHeader method is replaced by a Header method;
+its result, of type <a href="/pkg/http/#Header">Header</a>,
+implements Set and other methods.
+</p>
+
+<p>
+<a href="/pkg/net/">Package net</a>
+drops the <code>laddr</code> argument from <a href="/pkg/net/#Conn.Dial">Dial</a>
+and drops the <code>cname</code> return value
+from <a href="/pkg/net/#LookupHost">LookupHost</a>.
+The implementation now uses <a href="/cmd/cgo/">cgo</a> to implement
+network name lookups using the C library getaddrinfo(3)
+function when possible.  This ensures that Go and C programs
+resolve names the same way and also avoids the OS X 
+application-level firewall.
+</p>
+
+<p>
+<a href="/pkg/os/">Package os</a>
+introduces simplified <a href="/pkg/os/#File.Open">Open</a>
+and <a href="/pkg/os/#File.Create">Create</a> functions.
+The original Open is now available as <a href="/pkg/os/#File.OpenFile">OpenFile</a>.
+The final three arguments to <a href="/pkg/os/#Process.StartProcess">StartProcess</a>
+have been replaced by a pointer to a <a href="/pkg/os/#ProcAttr">ProcAttr</a>.
+</p>
+
+<p>
+<a href="/pkg/reflect/">Package reflect</a> has been redesigned.
+<a href="/pkg/reflect/#Type">Type</a> is now an interface that implements
+all the possible type methods.
+Instead of a type switch on a Type <code>t</code>, switch on <code>t.Kind()</code>.
+<a href="/pkg/reflect/#Value">Value</a> is now a struct value that
+implements all the possible value methods.
+Instead of a type switch on a Value <code>v</code>, switch on <code>v.Kind()</code>.
+Typeof and NewValue are now called <a href="/pkg/reflect/#Type.TypeOf">TypeOf</a> and <a href="/pkg/reflect/#Value.ValueOf">ValueOf</a>
+To create a writable Value, use <code>New(t).Elem()</code> instead of <code>Zero(t)</code>.
+See <a href="http://code.google.com/p/go/source/detail?r=843855f3c026">the change description</a>
+for the full details.
+The new API allows a more efficient implementation of Value
+that avoids many of the allocations required by the previous API.
+</p>
+
+<p>
+Remember that gofix will handle the bulk of the rewrites
+necessary for these changes to package APIs.
+</p>
+
+<h3 id="r57.tool">Tools</h3>
+
+<p><a href="/cmd/gofix/">Gofix</a>, a new command, is described above.</p>
+
+<p>
+<a href="/cmd/gotest/">Gotest</a> is now a Go program instead of a shell script.
+The new <code>-test.short</code> flag in combination with package testing's Short function
+allows you to write tests that can be run in normal or &ldquo;short&rdquo; mode;
+all.bash runs tests in short mode to reduce installation time.
+The Makefiles know about the flag: use <code>make testshort</code>.
+</p>
+
+<p>
+The run-time support now implements CPU and memory profiling.
+Gotest's new 
+<a href="/cmd/gotest/"><code>-test.cpuprofile</code> and
+<code>-test.memprofile</code> flags</a> make it easy to
+profile tests.
+To add profiling to your web server, see the <a href="/pkg/http/pprof/">http/pprof</a>
+documentation.
+For other uses, see the <a href="/pkg/runtime/pprof/">runtime/pprof</a> documentation.
+</p>
+
+<h3 id="r57.minor">Minor revisions</h3>
+
+<p>r57.1 fixes a <a href="http://code.google.com/p/go/source/detail?r=ff2bc62726e7145eb2ecc1e0f076998e4a8f86f0">nil pointer dereference in http.FormFile</a>.</p>
+<p>r57.2 fixes a <a href="http://code.google.com/p/go/source/detail?r=063b0ff67d8277df03c956208abc068076818dae">use of uninitialized memory in programs that misuse <code>goto</code></a>.</p>
+
+<h2 id="r56">r56 (released 2011/03/16)</h2>
+
+<p>
+The r56 release was the first stable release and corresponds to
+<code><a href="weekly.html#2011-03-07">weekly.2011-03-07.1</a></code>.
+The numbering starts at 56 because before this release,
+what we now consider weekly snapshots were called releases.
+</p>
