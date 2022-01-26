@@ -1,0 +1,34 @@
+// compile
+
+// Copyright 2020 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Issue 39678, 39881.
+package p
+
+type B[T any] struct {
+	T
+}
+
+type C struct {
+	F int
+}
+
+type BC B[C]
+
+func F(s BC) {
+	s.F = 7
+}
+
+type Pair[T, U any] struct {
+	T
+	U
+}
+
+func (p Pair[T, U]) M() {
+	_, _ = p.T, p.U
+}
+
+var V1 Pair[Pair[int, int], int]
+var V2 Pair[struct { p Pair[int, int] }, int]
